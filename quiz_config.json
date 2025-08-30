@@ -1,0 +1,197 @@
+{
+    "main_prompt": "You are Alex, a professional skills assessment coordinator. You conduct evaluations to help people understand their strengths and areas for development. Be encouraging, professional, and clear in your communication. \n\nIMPORTANT - TTS Formatting Rules:\n- End every sentence with proper punctuation (. ! ?)\n- Use commas for natural pauses and before names\n- Add exclamation points for enthusiasm and encouragement\n- Use hyphens for additional pauses when needed\n- Keep sentences conversational and not too long\n- Use direct address with commas: \"Great job, Sarah!\"\n- Add natural fillers like \"Let me see...\" or \"One moment...\"\n- Use quotes around specific instructions: Say \"A\" or \"option A\"\nThis is a voice conversation that will be converted to speech.",
+    "greeting": "Hello there! I'm Alex from the Skills Assessment team. \n\nToday I'll be conducting a brief evaluation to help identify your professional strengths - and areas for development. Exciting, right?\n\nThis assessment has 6 questions, each with multiple choice options. There are no right or wrong answers - just choose the option that best describes your typical approach or preference. \n\nEach answer has different point values, and your total score will help us provide personalized feedback tailored just for you. \n\nAre you ready to begin? Let's dive in!",
+    "questions": [
+        {
+            "id": "problem_solving",
+            "question": "When faced with a complex problem at work, your first instinct is to:",
+            "options": [
+                {
+                    "label": "A",
+                    "text": "Break it down into smaller, manageable parts",
+                    "score": 15
+                },
+                {
+                    "label": "B",
+                    "text": "Research similar problems and solutions",
+                    "score": 12
+                },
+                {
+                    "label": "C",
+                    "text": "Brainstorm with colleagues for different perspectives",
+                    "score": 10
+                },
+                {
+                    "label": "D",
+                    "text": "Dive in and learn by trial and error",
+                    "score": 8
+                },
+                {
+                    "label": "E",
+                    "text": "Seek guidance from a supervisor or expert",
+                    "score": 5
+                }
+            ]
+        },
+        {
+            "id": "time_management",
+            "question": "How do you typically handle competing priorities and deadlines?",
+            "options": [
+                {
+                    "label": "A",
+                    "text": "Create detailed schedules and stick to them religiously",
+                    "score": 15
+                },
+                {
+                    "label": "B",
+                    "text": "Prioritize based on importance and urgency",
+                    "score": 13
+                },
+                {
+                    "label": "C",
+                    "text": "Focus on what interests me most first",
+                    "score": 7
+                },
+                {
+                    "label": "D",
+                    "text": "Work on whatever seems most urgent at the moment",
+                    "score": 9
+                }
+            ]
+        },
+        {
+            "id": "leadership_style",
+            "question": "In a team setting, you naturally tend to:",
+            "options": [
+                {
+                    "label": "A",
+                    "text": "Take charge and coordinate everyone's efforts",
+                    "score": 15
+                },
+                {
+                    "label": "B",
+                    "text": "Support others and help resolve conflicts",
+                    "score": 12
+                },
+                {
+                    "label": "C",
+                    "text": "Contribute your expertise when asked",
+                    "score": 10
+                },
+                {
+                    "label": "D",
+                    "text": "Follow directions and complete assigned tasks",
+                    "score": 8
+                }
+            ]
+        },
+        {
+            "id": "learning_approach",
+            "question": "When learning a new skill or technology, you prefer to:",
+            "options": [
+                {
+                    "label": "A",
+                    "text": "Take a structured course or formal training",
+                    "score": 12
+                },
+                {
+                    "label": "B",
+                    "text": "Learn through hands-on practice and experimentation",
+                    "score": 15
+                },
+                {
+                    "label": "C",
+                    "text": "Watch others and learn from observation",
+                    "score": 9
+                },
+                {
+                    "label": "D",
+                    "text": "Read documentation and study independently",
+                    "score": 11
+                },
+                {
+                    "label": "E",
+                    "text": "Find a mentor or expert to guide you",
+                    "score": 8
+                }
+            ]
+        },
+        {
+            "id": "communication_preference",
+            "question": "Your preferred method for sharing important information with your team is:",
+            "options": [
+                {
+                    "label": "A",
+                    "text": "Detailed written reports with supporting data",
+                    "score": 12
+                },
+                {
+                    "label": "B",
+                    "text": "Interactive presentations with visual aids",
+                    "score": 15
+                },
+                {
+                    "label": "C",
+                    "text": "One-on-one discussions with key stakeholders",
+                    "score": 11
+                },
+                {
+                    "label": "D",
+                    "text": "Quick informal updates in person or via chat",
+                    "score": 8
+                }
+            ]
+        },
+        {
+            "id": "innovation_mindset",
+            "question": "When it comes to trying new approaches or technologies:",
+            "options": [
+                {
+                    "label": "A",
+                    "text": "I actively seek out and champion innovative solutions",
+                    "score": 15
+                },
+                {
+                    "label": "B",
+                    "text": "I'm open to change when I see clear benefits",
+                    "score": 12
+                },
+                {
+                    "label": "C",
+                    "text": "I prefer to let others test things first, then adopt what works",
+                    "score": 9
+                },
+                {
+                    "label": "D",
+                    "text": "I'm most comfortable sticking with proven methods",
+                    "score": 6
+                }
+            ]
+        }
+    ],
+    "scoring": {
+        "ranges": [
+            {
+                "min": 30,
+                "max": 50,
+                "result": "Developing Professional: You're building foundational skills and prefer structured support. Focus on developing systematic approaches to problem-solving and taking on more leadership opportunities. Consider seeking mentorship and formal training programs."
+            },
+            {
+                "min": 51,
+                "max": 70,
+                "result": "Competent Contributor: You have solid professional skills and work well in team environments. You balance independence with collaboration effectively. Consider expanding your influence by mentoring others and taking on more complex challenges."
+            },
+            {
+                "min": 71,
+                "max": 85,
+                "result": "Strong Performer: You demonstrate advanced professional capabilities with excellent problem-solving and communication skills. You're ready for leadership roles and should consider strategic projects that leverage your strengths while developing emerging leaders."
+            },
+            {
+                "min": 86,
+                "max": 90,
+                "result": "High Achiever: You exhibit exceptional professional skills across multiple domains. You're a natural leader who drives innovation and excellence. Consider executive development programs and opportunities to shape organizational strategy and culture."
+            }
+        ]
+    },
+    "completion_message": "Fantastic! You've completed the skills assessment. Your results will help identify your professional strengths - and suggest exciting development opportunities tailored specifically to your unique profile!"
+}
