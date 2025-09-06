@@ -1,8 +1,9 @@
 """
-Scored Quiz Builder Class
+Enhanced Scored Quiz Builder Class with RTVI Integration
 
 This module provides the ScoredQuizBuilder class that converts JSON quiz configurations
 into FlowManager configurations for Pipecat-based conversational AI applications.
+Now includes RTVI server message integration for structured client communication.
 """
 
 import asyncio
@@ -12,11 +13,13 @@ from typing import Dict, List, Any, Optional, Union
 from loguru import logger
 
 from pipecat_flows import FlowArgs, FlowManager, FlowResult
+from pipecat.processors.frameworks.rtvi import RTVIServerMessageFrame
 
 
 class ScoredQuizBuilder:
     """
     Builds FlowManager configurations for scored quiz/survey systems from JSON configuration.
+    Enhanced with RTVI server message integration for structured client communication.
 
     This class takes a JSON configuration defining questions, scoring, and prompts,
     and generates the corresponding flow nodes and handler functions for a conversational AI quiz bot.
@@ -133,6 +136,59 @@ class ScoredQuizBuilder:
     def get_scoring_ranges(self) -> List[Dict]:
         """Get the scoring ranges if defined."""
         return self._scoring.get("ranges", [])
+
+    def _create_question_server_message(self, question_index: int) -> Dict[str, Any]:
+        """
+        Create the server message data for a specific question.
+
+        Args:
+            question_index: Index of the question (0-based)
+
+        Returns:
+            Dictionary containing the question data for RTVI server message
+        """
+        if question_index >= len(self._questions):
+            return None
+
+        question = self._questions[question_index]
+        total_questions = len(self._questions)
+
+        # Format options for client
+        formatted_options = []
+        for option in question["options"]:
+            formatted_options.append(
+                {
+                    "label": option["label"],
+                    "text": option["text"],
+                    "value": option["label"],  # Client can submit this value
+                }
+            )
+
+        # Calculate progress
+        progress_percentage = round(((question_index + 1) / total_questions) * 100, 1)
+
+        return {
+            "type": "quiz_question",
+            "question_data": {
+                "question_id": question["id"],
+                "question_index": question_index,
+                "question_number": question_index + 1,
+                "total_questions": total_questions,
+                "question_text": question["question"],
+                "options": formatted_options,
+                "progress": {
+                    "current": question_index + 1,
+                    "total": total_questions,
+                    "percentage": progress_percentage,
+                },
+            },
+            "metadata": {
+                "expected_response_type": "single_choice",
+                "timeout_seconds": 60,
+                "can_skip": False,
+                "timestamp": asyncio.get_event_loop().time(),
+            },
+        }
 
     def build_flow_config(self) -> Dict[str, Any]:
         """
@@ -266,6 +322,216 @@ class ScoredQuizBuilder:
 
         return {"initial_node": "greeting", "nodes": nodes}
 
+    def _create_results_server_message(
+        self, flow_manager: FlowManager
+    ) -> Dict[str, Any]:
+        """
+        Create the server message data for quiz results.
+
+        Args:
+            flow_manager: The FlowManager instance containing the quiz state
+
+        Returns:
+            Dictionary containing the results data for RTVI server message
+        """
+        total_score = flow_manager.state.get("total_score", 0)
+        answers = flow_manager.state.get("answers", [])
+        max_score = flow_manager.state.get("max_possible_score", 0)
+        quiz_config = flow_manager.state.get("quiz_config", {})
+
+        percentage = round((total_score / max_score) * 100, 1) if max_score > 0 else 0
+
+        # Determine result category based on scoring ranges
+        result_message = quiz_config.get("completion_message", self._completion_message)
+        result_category = "Custom"
+        scoring_ranges = quiz_config.get("scoring_ranges", self.get_scoring_ranges())
+
+        for score_range in scoring_ranges:
+            if score_range["min"] <= total_score <= score_range["max"]:
+                result_message = score_range["result"]
+                # Extract category name from result message (first part before colon)
+                if ":" in result_message:
+                    result_category = result_message.split(":")[0].strip()
+                break
+
+        # Format detailed answers for client
+        formatted_answers = []
+        for answer in answers:
+            formatted_answers.append(
+                {
+                    "question_number": answer["question_index"] + 1,
+                    "question_id": answer["question_id"],
+                    "question_text": answer["question_text"],
+                    "selected_option": {
+                        "label": answer["selected_option"],
+                        "text": answer["option_text"],
+                        "points_earned": answer["points_earned"],
+                    },
+                }
+            )
+
+        # Create performance breakdown
+        performance_metrics = {
+            "score_distribution": {
+                "earned_points": total_score,
+                "possible_points": max_score,
+                "percentage": percentage,
+            },
+            "category_placement": {
+                "category": result_category,
+                "description": result_message,
+            },
+            "question_performance": {
+                "total_questions": len(self._questions),
+                "questions_answered": len(answers),
+                "average_score_per_question": round(total_score / len(answers), 1)
+                if answers
+                else 0,
+            },
+        }
+
+        # Determine performance level for client UI
+        performance_level = "developing"
+        if percentage >= 85:
+            performance_level = "excellent"
+        elif percentage >= 70:
+            performance_level = "strong"
+        elif percentage >= 50:
+            performance_level = "competent"
+
+        return {
+            "type": "quiz_results",
+            "results_data": {
+                "summary": {
+                    "total_score": total_score,
+                    "max_possible_score": max_score,
+                    "percentage": percentage,
+                    "performance_level": performance_level,
+                    "category": result_category,
+                    "completion_timestamp": asyncio.get_event_loop().time(),
+                },
+                "interpretation": {
+                    "result_message": result_message,
+                    "recommendations": self._generate_recommendations(
+                        percentage, result_category
+                    ),
+                    "strengths": self._identify_strengths(answers),
+                    "development_areas": self._identify_development_areas(answers),
+                },
+                "detailed_breakdown": {
+                    "performance_metrics": performance_metrics,
+                    "question_by_question": formatted_answers,
+                    "score_analysis": {
+                        "highest_scoring_areas": self._get_highest_scoring_areas(
+                            answers
+                        ),
+                        "lowest_scoring_areas": self._get_lowest_scoring_areas(answers),
+                    },
+                },
+            },
+            "metadata": {
+                "quiz_completed": True,
+                "results_generated": True,
+                "export_available": True,
+                "timestamp": asyncio.get_event_loop().time(),
+            },
+        }
+
+    def _generate_recommendations(self, percentage: float, category: str) -> List[str]:
+        """Generate personalized recommendations based on performance."""
+        recommendations = []
+
+        if percentage < 50:
+            recommendations.extend(
+                [
+                    "Focus on building foundational skills through structured learning",
+                    "Seek mentorship opportunities to accelerate development",
+                    "Consider formal training programs in your areas of interest",
+                ]
+            )
+        elif percentage < 70:
+            recommendations.extend(
+                [
+                    "Build on your solid foundation by taking on stretch assignments",
+                    "Develop leadership skills through team collaboration",
+                    "Expand your influence by sharing knowledge with others",
+                ]
+            )
+        elif percentage < 85:
+            recommendations.extend(
+                [
+                    "Consider taking on leadership roles in complex projects",
+                    "Mentor junior team members to develop your coaching skills",
+                    "Look for strategic initiatives that leverage your strengths",
+                ]
+            )
+        else:
+            recommendations.extend(
+                [
+                    "Pursue executive development opportunities",
+                    "Shape organizational strategy and culture",
+                    "Drive innovation and transformation initiatives",
+                ]
+            )
+
+        return recommendations
+
+    def _identify_strengths(self, answers: List[Dict]) -> List[str]:
+        """Identify strength areas based on high-scoring responses."""
+        strengths = []
+        high_score_threshold = 12  # Adjust based on your scoring system
+
+        strength_areas = {
+            "problem_solving": "Analytical Problem Solving",
+            "time_management": "Time Management & Prioritization",
+            "leadership_style": "Leadership & Team Collaboration",
+            "learning_approach": "Learning & Skill Development",
+            "communication_preference": "Communication & Presentation",
+            "innovation_mindset": "Innovation & Change Management",
+        }
+
+        for answer in answers:
+            if answer["points_earned"] >= high_score_threshold:
+                area = strength_areas.get(answer["question_id"], "Professional Skills")
+                if area not in strengths:
+                    strengths.append(area)
+
+        return strengths
+
+    def _identify_development_areas(self, answers: List[Dict]) -> List[str]:
+        """Identify development areas based on lower-scoring responses."""
+        development_areas = []
+        low_score_threshold = 8  # Adjust based on your scoring system
+
+        area_mapping = {
+            "problem_solving": "Strategic Problem Solving",
+            "time_management": "Advanced Planning & Prioritization",
+            "leadership_style": "Leadership Presence & Influence",
+            "learning_approach": "Self-Directed Learning",
+            "communication_preference": "Executive Communication",
+            "innovation_mindset": "Change Leadership & Innovation",
+        }
+
+        for answer in answers:
+            if answer["points_earned"] <= low_score_threshold:
+                area = area_mapping.get(
+                    answer["question_id"], "Professional Development"
+                )
+                if area not in development_areas:
+                    development_areas.append(area)
+
+        return development_areas
+
+    def _get_highest_scoring_areas(self, answers: List[Dict]) -> List[Dict]:
+        """Get the highest scoring question areas."""
+        sorted_answers = sorted(answers, key=lambda x: x["points_earned"], reverse=True)
+        return sorted_answers[:3]  # Top 3 performing areas
+
+    def _get_lowest_scoring_areas(self, answers: List[Dict]) -> List[Dict]:
+        """Get the lowest scoring question areas."""
+        sorted_answers = sorted(answers, key=lambda x: x["points_earned"])
+        return sorted_answers[:2]  # Bottom 2 performing areas
+
     def register_handlers_in_module(self, module):
         """
         Register all necessary handler functions in the specified module.
@@ -291,6 +557,15 @@ class ScoredQuizBuilder:
                 "completion_message": self._completion_message,
                 "scoring_ranges": self.get_scoring_ranges(),
             }
+
+            # Send first question to client via RTVI server message
+            if self._questions:
+                question_data = self._create_question_server_message(0)
+                if question_data:
+                    logger.info("Sending first question data to client via RTVI")
+                    await flow_manager.llm.push_frame(
+                        RTVIServerMessageFrame(data=question_data)
+                    )
 
             return {"status": "success", "message": "Quiz started", "current_score": 0}
 
@@ -367,6 +642,20 @@ class ScoredQuizBuilder:
                         f"Running total: {new_score}/{flow_manager.state.get('max_possible_score', 0)}"
                     )
 
+                    # Send next question to client via RTVI server message (if not the last question)
+                    next_question_index = q_index + 1
+                    if next_question_index < len(self._questions):
+                        question_data = self._create_question_server_message(
+                            next_question_index
+                        )
+                        if question_data:
+                            logger.info(
+                                f"Sending question {next_question_index + 1} data to client via RTVI"
+                            )
+                            await flow_manager.llm.push_frame(
+                                RTVIServerMessageFrame(data=question_data)
+                            )
+
                     return {
                         "status": "success",
                         "question_id": q_id,
@@ -427,7 +716,13 @@ class ScoredQuizBuilder:
                 "answers_summary": answers,
             }
 
-            # MANDATORY: Export results to JSON automatically
+            # Send results to client via RTVI server message
+            results_data = self._create_results_server_message(flow_manager)
+
+            logger.info("Sending comprehensive quiz results to client via RTVI")
+            await flow_manager.llm.push_frame(RTVIServerMessageFrame(data=results_data))
+
+            #
             try:
                 import datetime
 
